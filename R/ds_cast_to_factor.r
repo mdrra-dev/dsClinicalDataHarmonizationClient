@@ -1,7 +1,8 @@
 #' @title Cast specified columns to factor on a server-side data frame
-#' @description Convert one or more columns of a server-side data frame to factor
-#' using the \code{cast_to_factorDS} server-side function. The resulting data frame
-#' is assigned as a new object on each server.
+#' @description Convert one or more columns of a server-side data frame to
+#'   factor, via the disclosure-safe server function \code{cast_to_factorDS},
+#'   called through \code{datashield.aggregate} -- the modified data frame is
+#'   created server-side as a side effect; only column names come back.
 #'
 #' Server function called: \code{cast_to_factorDS}
 #'
@@ -16,8 +17,7 @@
 #' after login. If the \code{datasources} argument is not specified the default set of
 #' connections will be used: see \code{\link[DSI]{datashield.connections_default}}.
 #'
-#' @return Returns the name of the newly created server-side object
-#' containing the modified data frame.
+#' @return Invisibly returns the name of the newly created server-side object.
 #' @export
 #'
 
@@ -31,17 +31,18 @@ ds.cast_to_factor <- function(df, columns, modified_obj = NULL, datasources = NU
     modified_obj <- paste0(df, "_modified")
   }
 
-  collapsed_columns <- paste(columns , collapse = "$")
-  call <- call("cast_to_factorDS", as.symbol(df), columns)
+  collapsed_columns <- paste(columns, collapse = "$")
 
-  DSI::datashield.assign.expr(
+  results <- DSI::datashield.aggregate(
     conns = datasources,
-    symbol = modified_obj,
-    expr = call
+    expr  = call("cast_to_factorDS", as.symbol(df), collapsed_columns, modified_obj)
   )
 
-  message("Casted columns '", paste(columns, collapse = ", ") , "'. Result saved as: '", modified_obj, "'")
+  for (server in names(results)) {
+    message("Server ", server, ": cast to factor -- ",
+            paste(results[[server]]$columns_cast, collapse = ", "))
+  }
+  message("Result saved as: '", modified_obj, "'")
 
   invisible(modified_obj)
-
 }

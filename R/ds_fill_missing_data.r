@@ -1,8 +1,9 @@
 #' @title Fill missing visit data on a server-side data frame
-#' @description Invoke the server-side function \code{fill_missing_dataDS}
-#'   to fill missing values in a specified column within each patient,
-#'   ordered by visit time from diagnosis. The modified data frame is assigned
-#'   to a new server-side object.
+#' @description Fills missing values in a specified column within each
+#'   patient, ordered by visit time from diagnosis, via the disclosure-safe
+#'   server function \code{fill_missing_dataDS}, called through
+#'   \code{datashield.aggregate} -- the modified data frame is created
+#'   server-side as a side effect; only row/fill counts come back.
 #'
 #' Server function called: \code{fill_missing_dataDS}
 #'
@@ -23,10 +24,8 @@
 #'   see \code{\link[DSI]{datashield.connections_default}}.
 #'
 #' @return Invisibly returns the name of the newly created server-side object.
-#'   A message is printed indicating where the result has been saved.
 #' @export
 #'
-
 ds.fill_missing_data <- function(df, pat_id_col, visit_col, value_col,
                                  filled_newobj = NULL, datasources = NULL) {
 
@@ -38,13 +37,17 @@ ds.fill_missing_data <- function(df, pat_id_col, visit_col, value_col,
     filled_newobj <- paste0(df, "_filled")
   }
 
-  call <- call("fill_missing_dataDS", as.symbol(df), pat_id_col, visit_col, value_col)
-
-  datashield.assign.expr(
+  results <- DSI::datashield.aggregate(
     conns = datasources,
-    symbol     = filled_newobj,
-    expr       = call
+    expr  = call("fill_missing_dataDS", as.symbol(df), pat_id_col, visit_col,
+                 value_col, filled_newobj)
   )
+
+  for (server in names(results)) {
+    message("Server ", server, ": filled ", results[[server]]$n_filled,
+            " previously-missing '", value_col, "' values across ",
+            results[[server]]$n_rows, " rows")
+  }
   message("Result saved as: '", filled_newobj, "'")
 
   invisible(filled_newobj)
