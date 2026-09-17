@@ -24,7 +24,7 @@
 #' @return Invisible per-server list, the raw \code{exploratory_analysisDS} output.
 #' @export
 ds.exploratory_analysis <- function(df, numeric_cols = NULL, categorical_cols = NULL,
-                                     group_col = NULL, num_bins = 20
+                                     group_col = NULL, num_bins = 20,
                                      datasources = NULL) {
   if (is.null(datasources)) datasources <- datashield.connections_find()
 
