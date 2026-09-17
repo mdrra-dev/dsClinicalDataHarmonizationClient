@@ -123,11 +123,27 @@ ds.check_missing_data <- function(df,
 
   # ── TYPE == COMBINED ──────────────────────────────────────────────────────
   if (type == "combined") {
-    dims    <- dsBaseClient::ds.dim(df, type = "split", datasources = datasources)
-    n_vec   <- sapply(dims, function(x) x[1])
-    names(n_vec) <- names(dims)
-    miss_mat <- sapply(miss_tab[, names(datasources)], as.numeric)
-    miss_tab$global <- (miss_mat %*% n_vec) / sum(n_vec)
+    dims <- dsBaseClient::ds.dim(df,type = "split",datasources = datasources
+)
+n_vec <- sapply(dims, function(x) as.numeric(x[1]))
+# Missingness values
+miss_mat <- as.matrix(sapply(miss_tab[, names(miss_tab), drop = FALSE], as.numeric))
+
+# Handle one or multiple servers
+if (length(n_vec) == 1) {# Only one server
+  miss_tab$global <- as.numeric(miss_mat[, 1])
+  } else {
+  # Multiple servers
+  miss_tab$global <- as.numeric(
+    (miss_mat[, names(n_vec), drop = FALSE] %*% n_vec) /
+      sum(n_vec)
+  )
+}
+    # dims    <- dsBaseClient::ds.dim(df, type = "split", datasources = datasources)
+    # n_vec   <- sapply(dims, function(x) x[1])
+    # names(n_vec) <- names(dims)
+    # miss_mat <- sapply(miss_tab[, names(datasources)], as.numeric)
+    # miss_tab$global <- (miss_mat %*% n_vec) / sum(n_vec)
 
     missing_aggregate <- round(miss_tab, 2)
 
