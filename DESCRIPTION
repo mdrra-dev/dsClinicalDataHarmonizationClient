@@ -27,7 +27,7 @@ Maintainer: Arianna Fontanesi  <arianna.fontanesi@univr.it>
 Description: dsClinicalDataHarmonizationClient - Federated MDRRA Clinical Data Harmonization and data cleaning on DataSHIELD.
 Options: datashield.privacyLevel=5
 Depends: 
-       R (>= 3.5)
+       R (>= 3.5),
        DSI (>= 1.4.0),
        dsBaseClient (>= 6.2.0)
 Encoding: UTF-8
