@@ -107,13 +107,79 @@ ds.check_missing_data <- function(df,
     conns = datasources,
     expr  = call("check_missing_dataDS", as.symbol(df))
   )
-  ref_cols <- names(miss_list[[1]])
-  for (x in miss_list) {
-    if (!identical(names(x), ref_cols))
-      stop("Not all servers have the same columns.")
+  # ref_cols <- names(miss_list[[1]])
+  # for (x in miss_list) {
+  #   if (!identical(names(x), ref_cols))
+  #     stop("Not all servers have the same columns.")
+  # }
+  # miss_tab <- as.data.frame(miss_list)
+  # colnames(miss_tab) <- names(datasources)
+  # ------------------------------------------------------------------
+# Validate and align variables across servers
+# ------------------------------------------------------------------
+
+server_cols <- lapply(miss_list, names)
+
+# Check whether every server has the same set of variables
+ref_cols <- server_cols[[1]]
+
+same_columns <- vapply(
+  server_cols,
+  function(x) setequal(x, ref_cols),
+  logical(1)
+)
+
+if (!all(same_columns)) {
+
+  # Produce a useful diagnostic
+  union_cols <- Reduce(union, server_cols)
+
+  differences <- lapply(names(server_cols), function(srv) {
+    list(
+      missing = setdiff(union_cols, server_cols[[srv]]),
+      n_columns = length(server_cols[[srv]])
+    )
+  })
+
+  names(differences) <- names(server_cols)
+
+  message("\nColumn mismatch detected between servers:\n")
+
+  for (srv in names(differences)) {
+    message(
+      "  ", srv,
+      ": ", differences[[srv]]$n_columns, " columns"
+    )
+
+    if (length(differences[[srv]]$missing) > 0) {
+      message(
+        "    Missing: ",
+        paste(differences[[srv]]$missing, collapse = ", ")
+      )
+    }
   }
-  miss_tab <- as.data.frame(miss_list)
-  colnames(miss_tab) <- names(datasources)
+
+  stop(
+    "\nNot all servers have the same columns. ",
+    "Use type = 'split' for server-specific filtering, ",
+    "or harmonise the server-side data before using type = 'combined'."
+  )
+}
+
+# Same variables, possibly in different order:
+# align every server to the reference order
+miss_list <- lapply(
+  miss_list,
+  function(x) x[ref_cols]
+)
+
+# Preserve server names
+miss_tab <- as.data.frame(
+  miss_list,
+  check.names = FALSE
+)
+
+colnames(miss_tab) <- names(miss_list)
 
   .attach_tables <- function(x, aggregate = NULL, server = NULL) {
     attr(x, "missing_aggregate") <- aggregate
