@@ -107,23 +107,163 @@
     ggplot2::theme_minimal()
 }
 
-#' @title Build a ggplot "boxplot" from a precomputed five-number summary
-#' @description Uses \code{geom_boxplot(stat = "identity")}, since no
-#'   row-level data is ever available to compute a boxplot the normal way.
-#' @param summary_list Named list, group -> list(min, q25, median, q75, max, n).
+# #' @title Build a ggplot "boxplot" from a precomputed five-number summary
+# #' @description Uses \code{geom_boxplot(stat = "identity")}, since no
+# #'   row-level data is ever available to compute a boxplot the normal way.
+# #' @param summary_list Named list, group -> list(min, q25, median, q75, max, n).
+# #' @export
+# .cdh_plot_summary_boxplot <- function(summary_list, title, ylab = NULL) {
+#   groups <- names(summary_list)
+#   d <- do.call(rbind, lapply(groups, function(g) {
+#     s <- summary_list[[g]]
+#     data.frame(group = g, ymin = s$min, lower = s$q25, middle = s$median,
+#                upper = s$q75, ymax = s$max, n = s$n, stringsAsFactors = FALSE)
+#   }))
+#   ggplot2::ggplot(d, ggplot2::aes(x = group, ymin = ymin, lower = lower, middle = middle,
+#                                    upper = upper, ymax = ymax)) +
+#     ggplot2::geom_boxplot(stat = "identity") +
+#     ggplot2::geom_text(ggplot2::aes(y = ymax, label = paste0("n=", n)), vjust = -0.5, size = 3) +
+#     ggplot2::labs(title = title, x = NULL, y = ylab) +
+#     ggplot2::theme_minimal()
+# }
+
 #' @export
-.cdh_plot_summary_boxplot <- function(summary_list, title, ylab = NULL) {
-  groups <- names(summary_list)
-  d <- do.call(rbind, lapply(groups, function(g) {
-    s <- summary_list[[g]]
-    data.frame(group = g, ymin = s$min, lower = s$q25, middle = s$median,
-               upper = s$q75, ymax = s$max, n = s$n, stringsAsFactors = FALSE)
-  }))
-  ggplot2::ggplot(d, ggplot2::aes(x = group, ymin = ymin, lower = lower, middle = middle,
-                                   upper = upper, ymax = ymax)) +
-    ggplot2::geom_boxplot(stat = "identity") +
-    ggplot2::geom_text(ggplot2::aes(y = ymax, label = paste0("n=", n)), vjust = -0.5, size = 3) +
-    ggplot2::labs(title = title, x = NULL, y = ylab) +
+.cdh_plot_summary_boxplot <- function(
+    results,
+    title = "Follow-up duration by cohort",
+    ylab = "months"
+) {
+
+  if (is.null(results) || length(results) == 0L) {
+    return(NULL)
+  }
+
+  rows <- list()
+  k <- 0L
+
+  # ------------------------------------------------------------
+  # results is expected to be:
+  #
+  # site1
+  #   R
+  #     min, q25, median, q75, max, ...
+  #   STRAPPAT
+  #
+  # site2
+  #   R
+  #   STRAPPAT
+  # ------------------------------------------------------------
+
+  for (site in names(results)) {
+
+    site_res <- results[[site]]
+
+    if (is.null(site_res) || length(site_res) == 0L) {
+      next
+    }
+
+    # If site result is not named, nothing useful to plot
+    if (is.null(names(site_res))) {
+      next
+    }
+
+    for (g in names(site_res)) {
+
+      s <- site_res[[g]]
+
+      if (is.null(s) || length(s) == 0L) {
+        next
+      }
+
+      # ----------------------------------------------------------
+      # Safely extract scalar summary values
+      # ----------------------------------------------------------
+
+      get_scalar <- function(x) {
+        if (is.null(x) || length(x) == 0L) {
+          return(NA_real_)
+        }
+
+        x <- suppressWarnings(as.numeric(x))
+
+        if (length(x) == 0L || is.na(x[1])) {
+          return(NA_real_)
+        }
+
+        x[1]
+      }
+
+      ymin   <- get_scalar(s$min)
+      lower  <- get_scalar(s$q25)
+      middle <- get_scalar(s$median)
+      upper  <- get_scalar(s$q75)
+      ymax   <- get_scalar(s$max)
+
+      # ----------------------------------------------------------
+      # Don't create a row if there is no releasable summary
+      # ----------------------------------------------------------
+
+      if (all(is.na(c(ymin, lower, middle, upper, ymax)))) {
+        next
+      }
+
+      k <- k + 1L
+
+      rows[[k]] <- data.frame(
+        server = site,
+        group = g,
+        ymin = ymin,
+        lower = lower,
+        middle = middle,
+        upper = upper,
+        ymax = ymax,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  if (length(rows) == 0L) {
+    warning(
+      "No releasable follow-up summary statistics available for plotting."
+    )
+    return(NULL)
+  }
+
+  plot_df <- do.call(rbind, rows)
+
+  rownames(plot_df) <- NULL
+
+  # ------------------------------------------------------------
+  # Plot summary boxplots
+  # ------------------------------------------------------------
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    return(NULL)
+  }
+
+  ggplot2::ggplot(
+    plot_df,
+    ggplot2::aes(
+      x = group,
+      ymin = ymin,
+      lower = lower,
+      middle = middle,
+      upper = upper,
+      ymax = ymax
+    )
+  ) +
+    ggplot2::geom_boxplot(
+      stat = "identity"
+    ) +
+    ggplot2::facet_wrap(
+      ~server,
+      scales = "free_x"
+    ) +
+    ggplot2::labs(
+      title = title,
+      x = "Cohort",
+      y = ylab
+    ) +
     ggplot2::theme_minimal()
 }
 

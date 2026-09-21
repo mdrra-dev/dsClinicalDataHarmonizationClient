@@ -7,11 +7,25 @@
 ds.filter_rows(
   df,
   column,
-  operator = c("==", "!=", ">", "<", ">=", "<=", "\%in\%", "is.na", "not.na"),
+  operator = c("eq", "neq", "gt", "lt", "gte", "lte", "in", "is_na", "not_na"),
   value = NULL,
   newobj = NULL,
   datasources = NULL
 )
+}
+\arguments{
+\item{df}{Name of the server-side data frame.}
+
+\item{column}{Character, the column to test.}
+
+\item{value}{Comparison value; ignored for \code{is_na} and \code{not_na}.}
+
+\item{newobj}{Name of the output server-side object.}
+
+\item{datasources}{DataSHIELD connections.}
+}
+\value{
+Invisibly returns \code{newobj}.
 }
 \description{
 Filter rows of a server-side data frame by a simple condition

@@ -137,18 +137,20 @@ ds.run_D2T_survival <- function(data_object = "Draw_cleaned",
     dsSurvivalClient::ds.Surv(
       time = if (surv_type == "counting") "entry" else "time",
       time2 = if (surv_type == "counting") "time" else NULL,
-      event = "event", objectname = "surv_S", type = surv_type,
-      objectname = surv_obj_name,
+      event = "event", 
+      objectname = "surv_S", 
+      type = surv_type,
+      #objectname = surv_obj_name,
       datasources = datasources)
   }, error = function(e) message("  ds.Surv() failed: ", conditionMessage(e),
                                   " -- check argument names against your installed dsSurvivalClient version."))
 
 
-dsSurvivalClient::ds.Surv(time='STARTTIME', time2='ENDTIME', 
-                      event = 'EVENT', objectname='surv_object',
-                      type='counting')
+# dsSurvivalClient::ds.Surv(time='STARTTIME', time2='ENDTIME', 
+#                       event = 'EVENT', objectname='surv_object',
+#                       type='counting')
               
-coxph_model_full <- dsSurvivalClient::ds.coxph.SLMA(formula = 'surv_object~D$age+D$female')
+coxph_model_full <- dsSurvivalClient::ds.coxph.SLMA(formula = 'surv_S~D$age+D$female')
 
   covars_rhs <- if (!is.null(group_col)) group_col else "1"
 

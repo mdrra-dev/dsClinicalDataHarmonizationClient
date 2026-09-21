@@ -52,11 +52,46 @@ ds.run_D2T_exploratory <- function(data_object = "Draw_cleaned",
   message("Objective 3: follow-up duration heterogeneity...")
   results$followup <- ds.d2t_followup_stats(cohort_obj, pat_id_col, visit_months_col, "cohort",
                                              min_followup_months, nfilter, datasources)
-  .cdh_save_csv(.d2t_named_list_to_df(results$followup, "cohort"), fig_dir, "04_followup_duration_by_cohort.csv")
-  if (requireNamespace("ggplot2", quietly = TRUE) && length(results$followup) > 0) {
-    .cdh_save_plot(.cdh_plot_summary_boxplot(results$followup, "Follow-up duration by cohort", "months"),
-                   fig_dir, "04_followup_duration_by_cohort.png")
+  #.cdh_save_csv(.d2t_named_list_to_df(results$followup, "cohort"), fig_dir, "04_followup_duration_by_cohort.csv")
+
+  followup_df <- .d2t_named_list_to_df(
+  results$followup,
+  "cohort"
+)
+
+if (!is.null(followup_df) && nrow(followup_df) > 0L) {
+  .cdh_save_csv(
+    followup_df,
+    fig_dir,
+    "04_followup_duration_by_cohort.csv"
+  )
+} else {
+  message(
+    "  Follow-up summary produced no releasable cohort-level results."
+  )
+}
+  # if (requireNamespace("ggplot2", quietly = TRUE) && length(results$followup) > 0) {
+  #   .cdh_save_plot(.cdh_plot_summary_boxplot(results$followup, "Follow-up duration by cohort", "months"),
+  #                  fig_dir, "04_followup_duration_by_cohort.png")
+  # }
+
+  if (requireNamespace("ggplot2", quietly = TRUE) &&
+    length(results$followup) > 0) {
+
+  followup_plot <- .cdh_plot_summary_boxplot(
+    results$followup,
+    "Follow-up duration by cohort",
+    "months"
+  )
+
+  if (!is.null(followup_plot)) {
+    .cdh_save_plot(
+      followup_plot,
+      fig_dir,
+      "04_followup_duration_by_cohort.png"
+    )
   }
+}
 
   message("Objective 4: visit-interval heterogeneity...")
   results$visit_interval <- ds.d2t_visit_interval_stats(cohort_obj, pat_id_col, visit_months_col,
@@ -93,14 +128,79 @@ ds.run_D2T_exploratory <- function(data_object = "Draw_cleaned",
   results
 }
 
+# #' @export
+# .d2t_named_list_to_df <- function(lst, group_name) {
+#   if (is.null(lst) || length(lst) == 0) return(NULL)
+#   do.call(rbind, lapply(names(lst), function(g) {
+#     row <- as.data.frame(lst[[g]][!vapply(lst[[g]], is.list, logical(1))], stringsAsFactors = FALSE)
+#     row[[group_name]] <- g
+#     row
+#   }))
+# }
+
 #' @export
-.d2t_named_list_to_df <- function(lst, group_name) {
-  if (is.null(lst) || length(lst) == 0) return(NULL)
-  do.call(rbind, lapply(names(lst), function(g) {
-    row <- as.data.frame(lst[[g]][!vapply(lst[[g]], is.list, logical(1))], stringsAsFactors = FALSE)
-    row[[group_name]] <- g
-    row
+.d2t_named_list_to_df <- function(lst, group_name = "cohort") {
+
+  if (is.null(lst) || length(lst) == 0L) {
+    return(NULL)
+  }
+
+  ## ------------------------------------------------------------
+  ## Case 1: DataSHIELD result is nested by server/site
+  ## ------------------------------------------------------------
+  out <- do.call(rbind, lapply(names(lst), function(site) {
+
+    site_res <- lst[[site]]
+
+    if (is.null(site_res) || length(site_res) == 0L) {
+      return(NULL)
+    }
+
+    ## site_res should normally be named by cohort
+    if (is.list(site_res) && !is.null(names(site_res))) {
+
+      site_df <- do.call(rbind, lapply(names(site_res), function(g) {
+
+        x <- site_res[[g]]
+
+        if (is.null(x) || length(x) == 0L) {
+          return(NULL)
+        }
+
+        ## Remove nested/list elements
+        keep <- !vapply(x, is.list, logical(1))
+
+        if (!any(keep)) {
+          return(NULL)
+        }
+
+        row <- as.data.frame(
+          x[keep],
+          stringsAsFactors = FALSE
+        )
+
+        if (nrow(row) == 0L) {
+          return(NULL)
+        }
+
+        row[[group_name]] <- g
+        row$server <- site
+
+        row
+      }))
+
+      return(site_df)
+    }
+
+    NULL
   }))
+
+  if (is.null(out) || nrow(out) == 0L) {
+    return(NULL)
+  }
+
+  rownames(out) <- NULL
+  out
 }
 
 #' @export

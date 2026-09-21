@@ -68,24 +68,153 @@ ds.followup_duration_cdf <- function(df, pat_id_col = "pat_ID",
     }
   }
 
+  # if (requireNamespace("ggplot2", quietly = TRUE)) {
+  #   curve_rows <- do.call(rbind, lapply(names(results), function(s) {
+  #     grid <- results[[s]]$grid
+  #     do.call(rbind, lapply(names(results[[s]]$groups), function(g) {
+  #       data.frame(server = s, group = g, months = grid,
+  #                  proportion = results[[s]]$groups[[g]]$survival_curve, stringsAsFactors = FALSE)
+  #     }))
+  #   }))
+  #   fig <- ggplot2::ggplot(curve_rows, ggplot2::aes(x = months, y = proportion, color = group)) +
+  #     ggplot2::geom_step() + ggplot2::facet_wrap(~server) +
+  #     ggplot2::geom_vline(xintercept = min_months, linetype = "dashed") +
+  #     ggplot2::labs(title = paste0("Follow-up duration: proportion of patients with >= x months"),
+  #                   x = "months", y = "proportion") +
+  #     ggplot2::theme_minimal()
+  #   #return(invisible(list(raw = results, plot = fig)))
+  #   return( list(raw = results, plot = fig))
+  # }
   if (requireNamespace("ggplot2", quietly = TRUE)) {
-    curve_rows <- do.call(rbind, lapply(names(results), function(s) {
-      grid <- results[[s]]$grid
-      do.call(rbind, lapply(names(results[[s]]$groups), function(g) {
-        data.frame(server = s, group = g, months = grid,
-                   proportion = results[[s]]$groups[[g]]$survival_curve, stringsAsFactors = FALSE)
-      }))
-    }))
-    fig <- ggplot2::ggplot(curve_rows, ggplot2::aes(x = months, y = proportion, color = group)) +
-      ggplot2::geom_step() + ggplot2::facet_wrap(~server) +
-      ggplot2::geom_vline(xintercept = min_months, linetype = "dashed") +
-      ggplot2::labs(title = paste0("Follow-up duration: proportion of patients with >= x months"),
-                    x = "months", y = "proportion") +
+
+  # ------------------------------------------------------------
+  # 1. Build one row per grid point per server
+  # ------------------------------------------------------------
+  grid_rows <- do.call(rbind, lapply(names(results), function(s) {
+
+    grid <- results[[s]]$grid
+
+    if (is.null(grid) || length(grid) == 0L) {
+      return(NULL)
+    }
+
+    data.frame(
+      server = s,
+      months = as.numeric(grid),
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  # ------------------------------------------------------------
+  # 2. Plot the grid separately for each site/server
+  # ------------------------------------------------------------
+  if (!is.null(grid_rows) && nrow(grid_rows) > 0L) {
+
+    fig_grid <- ggplot2::ggplot(
+      grid_rows,
+      ggplot2::aes(
+        x = months,
+        y = 0
+      )
+    ) +
+      ggplot2::geom_point(size = 2) +
+      ggplot2::facet_wrap(~server, scales = "free_x") +
+      ggplot2::geom_vline(
+        xintercept = min_months,
+        linetype = "dashed"
+      ) +
+      ggplot2::scale_y_continuous(
+        breaks = NULL
+      ) +
+      ggplot2::labs(
+        title = "Follow-up CDF grid by site",
+        x = "Follow-up months",
+        y = NULL
+      ) +
       ggplot2::theme_minimal()
-    #return(invisible(list(raw = results, plot = fig)))
-    return( list(raw = results, plot = fig))
+
+  } else {
+    fig_grid <- NULL
   }
 
-  #invisible(list(raw = results, plot = NULL))
-   list(raw = results, plot = NULL)
+  # ------------------------------------------------------------
+  # 3. Build CDF curves if groups are available
+  # ------------------------------------------------------------
+  curve_rows <- do.call(rbind, lapply(names(results), function(s) {
+
+    groups <- results[[s]]$groups
+
+    if (is.null(groups) || length(groups) == 0L) {
+      return(NULL)
+    }
+
+    grid <- results[[s]]$grid
+
+    do.call(rbind, lapply(names(groups), function(g) {
+
+      curve <- groups[[g]]$survival_curve
+
+      data.frame(
+        server = s,
+        group = g,
+        months = grid,
+        proportion = curve,
+        stringsAsFactors = FALSE
+      )
+    }))
+  }))
+
+  # ------------------------------------------------------------
+  # 4. Plot CDF curves if available
+  # ------------------------------------------------------------
+  if (!is.null(curve_rows) && nrow(curve_rows) > 0L) {
+
+    fig_cdf <- ggplot2::ggplot(
+      curve_rows,
+      ggplot2::aes(
+        x = months,
+        y = proportion,
+        color = group
+      )
+    ) +
+      ggplot2::geom_step() +
+      ggplot2::facet_wrap(~server, scales = "free_x") +
+      ggplot2::geom_vline(
+        xintercept = min_months,
+        linetype = "dashed"
+      ) +
+      ggplot2::labs(
+        title = "Follow-up duration: proportion of patients with >= x months",
+        x = "months",
+        y = "proportion",
+        color = "Cohort"
+      ) +
+      ggplot2::theme_minimal()
+
+  } else {
+    fig_cdf <- NULL
+
+    warning(
+      "No follow-up CDF groups were returned by any server; ",
+      "only the site-specific grids will be plotted."
+    )
+  }
+
+  # ------------------------------------------------------------
+  # 5. Return both
+  # ------------------------------------------------------------
+  return(
+    list(
+      raw = results,
+      plot = fig_cdf,
+      grid_plot = fig_grid
+    )
+  )
+}
+
+list(
+  raw = results,
+  plot = NULL,
+  grid_plot = NULL
+)
 }
