@@ -164,6 +164,7 @@ coxph_model_full <- dsSurvivalClient::ds.coxph.SLMA(formula = 'surv_S~D$age+D$fe
       ylab = paste0(event_col, "-free survival"), ggplot = TRUE)
   }, error = function(e) { message("  KM step failed: ", conditionMessage(e)); NULL })
 
+
   if (!is.null(km_plot) && inherits(km_plot, "ggplot")) {
     .cdh_save_plot(km_plot, fig_dir, "11_kaplan_meier_by_cohort.png")
   } else if (!is.null(km_plot)) {
