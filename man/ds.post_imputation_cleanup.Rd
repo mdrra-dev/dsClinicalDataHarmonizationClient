@@ -6,24 +6,6 @@
 \usage{
 ds.post_imputation_cleanup(df, newobj = NULL, datasources = NULL)
 }
-\arguments{
-\item{df}{Character string naming the (imputed) server-side data frame.}
-
-\item{newobj}{Name of the new server-side object. Defaults to
-\code{paste0(df, "_complete")}.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
-}
-\value{
-Invisibly returns \code{newobj}.
-}
 \description{
-Explicit, opt-in row-drop for whatever residual \code{NA}s
-  remain after imputation. Run \code{ds.check_residual_na()} first to see
-  the scale of what would be dropped. Calls the disclosure-safe server
-  function \code{post_imputation_cleanupDS} via \code{datashield.aggregate}
-  -- the cleaned data frame is created server-side as a side effect; only
-  row counts come back.
-
-Server function called: \code{post_imputation_cleanupDS}
+Drop rows still incomplete after imputation
 }

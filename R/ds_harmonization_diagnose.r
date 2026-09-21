@@ -32,7 +32,7 @@
 ds.harmonization_diagnose <- function(df,
                                        required_vars = NULL, optional_vars = NULL,
                                        pat_id_col = "pat_ID",
-                                       visit_col = "Visit",
+                                       visit_col = "Visit_months_from_diagnosis",
                                        zero_prop_threshold = 0.3, spike_ratio_threshold = 3,
                                        nfilter = 5, datasources = NULL) {
 

@@ -6,28 +6,6 @@
 \usage{
 ds.remove_columns(df, col_names, newobj = NULL, datasources = NULL)
 }
-\arguments{
-\item{df}{A character string specifying the name of the server-side data frame
-from which columns will be removed.}
-
-\item{col_names}{A character vector specifying the names of the columns to remove.}
-
-\item{newobj}{A character string specifying the name of the new server-side object
-to store the modified data frame. If NULL, a name is generated automatically by
-appending \code{"_filtered"} to \code{df}.}
-
-\item{datasources}{a list of \code{\link[DSI]{DSConnection-class}}
-objects obtained after login. If the \code{datasources} argument is not specified
-the default set of connections will be used: see \code{\link[DSI]{datashield.connections_default}}.}
-}
-\value{
-Invisibly returns the name of the newly created server-side object.
-}
 \description{
-Remove one or more columns via the disclosure-safe server
-  function \code{remove_columnsDS}, called through
-  \code{datashield.aggregate} -- the modified data frame is created
-  server-side as a side effect; only column names/counts come back.
-
-Server function called: \code{remove_columnsDS}
+Remove specified columns from a server-side data frame
 }

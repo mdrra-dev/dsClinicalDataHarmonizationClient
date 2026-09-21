@@ -24,4 +24,3 @@ Internal helper shared by \code{ds.harmonization_diagnose()},
   if not supplied) and calls \code{harmonization_diagnosisDS} via
   \code{datashield.aggregate}.
 }
-\keyword{internal}

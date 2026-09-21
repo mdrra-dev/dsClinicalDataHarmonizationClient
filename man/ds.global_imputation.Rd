@@ -13,35 +13,6 @@ ds.global_imputation(
   datasources = NULL
 )
 }
-\arguments{
-\item{df}{A character string specifying the name of the server-side data frame
-on which the global imputation is performed.}
-
-\item{id_col}{A character string indicating the name of the identifier column that
-is excluded from imputation.}
-
-\item{m}{A numeric value representing the number of imputations to generate.
-Default is 5.}
-
-\item{maxit}{A numeric value representing the maximum number of MICE iterations per imputation chain.
-Default is 30.}
-
-\item{imputed_newobj}{A character string specifying the name of the new
-imputed object to be created on each server. If NULL, a name is generated
-automatically by appending \code{"_imputed"} to \code{df}.}
-
-\item{datasources}{A list of DataSHIELD connections. If NULL, the active
-connections returned by \code{datashield.connections_find()} are used.}
-}
-\value{
-Invisibly returns the name of the newly created server-side object.
-}
 \description{
-Performs pooled (not patient-grouped) imputation via the
-  disclosure-safe server function \code{global_imputationDS}, called
-  through \code{datashield.aggregate} -- the imputed data frame is
-  created server-side as a side effect; only row/column counts and the
-  per-column imputation method names (never data) come back.
-
-Server function called: \code{global_imputationDS}
+Global imputation of a server-side object using MICE
 }

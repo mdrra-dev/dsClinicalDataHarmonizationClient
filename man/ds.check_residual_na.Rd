@@ -6,18 +6,6 @@
 \usage{
 ds.check_residual_na(df, datasources = NULL)
 }
-\arguments{
-\item{df}{Character string naming the (imputed) server-side data frame.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
-}
-\value{
-Invisible per-server list of named NA counts.
-}
 \description{
-Reports, per server, which columns (if any) still contain
-  \code{NA} after an imputation step, and how many. Call this BEFORE
-  deciding whether to use \code{ds.post_imputation_cleanup()}.
-
-Server function called: \code{check_residual_naDS}
+Check for residual missing values after imputation
 }

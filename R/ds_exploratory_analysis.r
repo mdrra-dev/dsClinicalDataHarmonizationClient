@@ -19,19 +19,22 @@
 #' @param group_col Optional column for group-wise numeric means (e.g. a
 #'   visit number, for a longitudinal trend).
 #' @param num_bins Number of histogram bins per numeric column. Default 20.
+#' @param nfilter Disclosure/stability floor.
+#' @param max_categories_shown Distinct-value threshold above which a
+#'   categorical column gets extremes-only reporting (no labels). Default 20.
 #' @param datasources A list of \code{\link[DSI]{DSConnection-class}} objects.
 #'
 #' @return Invisible per-server list, the raw \code{exploratory_analysisDS} output.
 #' @export
 ds.exploratory_analysis <- function(df, numeric_cols = NULL, categorical_cols = NULL,
-                                     group_col = NULL, num_bins = 20,
-                                     datasources = NULL) {
+                                     group_col = NULL, num_bins = 20, nfilter = 5,
+                                     max_categories_shown = 20, datasources = NULL) {
   if (is.null(datasources)) datasources <- datashield.connections_find()
 
   results <- DSI::datashield.aggregate(
     conns = datasources,
     expr = call("exploratory_analysisDS", as.symbol(df), numeric_cols, categorical_cols,
-                group_col, num_bins)
+                group_col, num_bins, nfilter, max_categories_shown)
   )
 
   for (server in names(results)) {

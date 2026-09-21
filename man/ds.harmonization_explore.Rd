@@ -11,6 +11,7 @@ ds.harmonization_explore(
   group_col = "Visit",
   num_bins = 20,
   nfilter = 5,
+  max_categories_shown = 20,
   datasources = NULL
 )
 }
@@ -30,6 +31,11 @@ each numeric variable at each level). Default \code{"Visit"}; set
 
 \item{nfilter}{Disclosure/stability floor.}
 
+\item{max_categories_shown}{Distinct-value threshold above which a
+categorical column's full label:count breakdown is replaced with
+extremes only (no labels) -- see \code{cdh_categorical_summary} in the
+server package. Default 20.}
+
 \item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
 }
 \value{
@@ -39,12 +45,14 @@ A list:
     \item \code{stats}: raw per-server \code{exploratory_analysisDS} output.
     \item \code{report}: list with \code{numeric_summary} (per-site
       data.frame), \code{categorical_summary} (named list of per-site
-      data.frames, one per variable), and \code{correlation} (named list
-      of per-site correlation-matrix data.frames, one per server).
+      data.frames, one per bounded-set variable), \code{categorical_extremes}
+      (data.frame, one row per server/high-cardinality-variable: \code{n_distinct},
+      \code{max_count}, \code{min_count}, no category labels), and
+      \code{correlation} (named list of per-site correlation-matrix data.frames).
     \item \code{figures}: named list of ggplot objects (histograms --
       one per numeric column per server --, a categorical-frequency bar
-      chart per variable, a correlation heatmap per server, and a
-      group-trend line chart if \code{group_col} was usable), or
+      chart per bounded-set variable, a correlation heatmap per server,
+      and a group-trend line chart if \code{group_col} was usable), or
       \code{NULL} if ggplot2 isn't installed.
   }
 }

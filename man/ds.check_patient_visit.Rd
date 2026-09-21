@@ -7,7 +7,7 @@
 ds.check_patient_visit(
   df,
   pat_id_col = "pat_ID",
-  visit_col = "Visit",
+  visit_col = "Visit_months_from_diagnosis",
   datasources = NULL
 )
 }

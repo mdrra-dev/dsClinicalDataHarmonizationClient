@@ -1,0 +1,7 @@
+Label: D2T (binary), n=5986, range=[0,1]
+Clinical features analyzed: 20 (Visit_months_from_diagnosis, Age_diagnosis, Sex, RF_positivity, anti_CCP, DAS28, Pat_global, Pain, Ph_global, CRP, ESR, SJC28, TJC28, conc_MTX_dose, N_prev_csDMARD, N_prev_bDMARD, GC, Year_diagnosis, month_diagnosis, Visit)
+Strongest Spearman association: N_prev_bDMARD (rho=0.583)
+FDR-significant Spearman associations: 16
+Multivariable model (glm): pooled N=4798
+LIMITATION: Kruskal-Wallis/Wilcoxon results are reported PER SITE, not meta-pooled across sites.
+LIMITATION: random forest importance is exploratory only, NOT a causal or federated-optimal estimate.

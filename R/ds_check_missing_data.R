@@ -31,11 +31,10 @@
 #'   row names and a single column containing that server's missingness percentages.
 #' }
 #'
-#' Server-side functions called: \code{check_missing_dataDS},
-#' \code{remove_columnsDS}, \code{drop_rows_missingDS} -- all called via
-#' \code{datashield.aggregate}; server-side objects are created via each
-#' function's internal disclosure-safe \code{assign(..., envir =
-#' parent.frame())}, never via \code{datashield.assign.expr}.
+#' Server-side functions called: \code{check_missing_dataDS} (aggregate),
+#' \code{remove_columnsDS}/\code{drop_rows_missingDS} -- both called via
+#' \code{datashield.aggregate}, creating the new object server-side via
+#' \code{base::assign(newobj, ..., envir=parent.frame())} as a side effect.
 #'
 #' @param df A character string specifying the name of the input data frame
 #' stored on each server.
@@ -107,79 +106,33 @@ ds.check_missing_data <- function(df,
     conns = datasources,
     expr  = call("check_missing_dataDS", as.symbol(df))
   )
-  # ref_cols <- names(miss_list[[1]])
-  # for (x in miss_list) {
-  #   if (!identical(names(x), ref_cols))
-  #     stop("Not all servers have the same columns.")
-  # }
-  # miss_tab <- as.data.frame(miss_list)
-  # colnames(miss_tab) <- names(datasources)
-  # ------------------------------------------------------------------
-# Validate and align variables across servers
-# ------------------------------------------------------------------
 
-server_cols <- lapply(miss_list, names)
+  # Servers need NOT have identical column sets or column ORDER: align by
+  # NAME (union of columns across servers), never by position. A server
+  # missing a column just gets NA for that column's missingness -- no error.
+  # We only ever WARN (never stop) about a variable that is actually
+  # REQUIRED (per the package's variable dictionary) but absent somewhere.
+  all_cols <- sort(unique(unlist(lapply(miss_list, names))))
 
-# Check whether every server has the same set of variables
-ref_cols <- server_cols[[1]]
+  required_vars <- tryCatch({
+    dict <- DSI::datashield.aggregate(conns = datasources[1],
+      expr = call("clinical_variable_dictionaryDS"))[[1]]
+    dict$required
+  }, error = function(e) character(0))
 
-same_columns <- vapply(
-  server_cols,
-  function(x) setequal(x, ref_cols),
-  logical(1)
-)
-
-if (!all(same_columns)) {
-
-  # Produce a useful diagnostic
-  union_cols <- Reduce(union, server_cols)
-
-  differences <- lapply(names(server_cols), function(srv) {
-    list(
-      missing = setdiff(union_cols, server_cols[[srv]]),
-      n_columns = length(server_cols[[srv]])
-    )
-  })
-
-  names(differences) <- names(server_cols)
-
-  message("\nColumn mismatch detected between servers:\n")
-
-  for (srv in names(differences)) {
-    message(
-      "  ", srv,
-      ": ", differences[[srv]]$n_columns, " columns"
-    )
-
-    if (length(differences[[srv]]$missing) > 0) {
-      message(
-        "    Missing: ",
-        paste(differences[[srv]]$missing, collapse = ", ")
-      )
-    }
+  missing_required <- setdiff(required_vars, all_cols)  # required vars absent at EVERY server
+  for (srv in names(miss_list)) {
+    srv_missing_req <- intersect(required_vars, setdiff(all_cols, names(miss_list[[srv]])))
+    missing_required <- union(missing_required, srv_missing_req)
+  }
+  if (length(missing_required) > 0) {
+    warning("Required variable(s) missing at one or more servers (treated as NA there, ",
+            "not an error): ", paste(missing_required, collapse = ", "), call. = FALSE)
   }
 
-  stop(
-    "\nNot all servers have the same columns. ",
-    "Use type = 'split' for server-specific filtering, ",
-    "or harmonise the server-side data before using type = 'combined'."
-  )
-}
-
-# Same variables, possibly in different order:
-# align every server to the reference order
-miss_list <- lapply(
-  miss_list,
-  function(x) x[ref_cols]
-)
-
-# Preserve server names
-miss_tab <- as.data.frame(
-  miss_list,
-  check.names = FALSE
-)
-
-colnames(miss_tab) <- names(miss_list)
+  miss_tab <- as.data.frame(sapply(miss_list, function(x) x[all_cols]))
+  rownames(miss_tab) <- all_cols
+  colnames(miss_tab) <- names(datasources)
 
   .attach_tables <- function(x, aggregate = NULL, server = NULL) {
     attr(x, "missing_aggregate") <- aggregate
@@ -189,36 +142,28 @@ colnames(miss_tab) <- names(miss_list)
 
   # ── TYPE == COMBINED ──────────────────────────────────────────────────────
   if (type == "combined") {
-    dims <- dsBaseClient::ds.dim(df,type = "split",datasources = datasources
-)
-n_vec <- sapply(dims, function(x) as.numeric(x[1]))
-# Missingness values
-miss_mat <- as.matrix(sapply(miss_tab[, names(miss_tab), drop = FALSE], as.numeric))
-
-# Handle one or multiple servers
-if (length(n_vec) == 1) {# Only one server
-  miss_tab$global <- as.numeric(miss_mat[, 1])
-  } else {
-  # Multiple servers
-  miss_tab$global <- as.numeric(
-    (miss_mat[, names(n_vec), drop = FALSE] %*% n_vec) /
-      sum(n_vec)
-  )
-}
-    # dims    <- dsBaseClient::ds.dim(df, type = "split", datasources = datasources)
-    # n_vec   <- sapply(dims, function(x) x[1])
-    # names(n_vec) <- names(dims)
-    # miss_mat <- sapply(miss_tab[, names(datasources)], as.numeric)
-    # miss_tab$global <- (miss_mat %*% n_vec) / sum(n_vec)
+    dims    <- dsBaseClient::ds.dim(df, type = "split", datasources = datasources)
+    n_vec   <- sapply(dims, function(x) x[1])
+    names(n_vec) <- names(dims)
+    miss_mat <- as.matrix(sapply(miss_tab[, names(datasources), drop = FALSE], as.numeric))
+    rownames(miss_mat) <- rownames(miss_tab)
+    # Weighted average using only the servers where the variable actually
+    # exists -- a variable absent at one server (NA there) must not poison
+    # the whole row to NA via a plain matrix product.
+    miss_tab$global <- apply(miss_mat, 1, function(row) {
+      ok <- !is.na(row)
+      if (!any(ok)) return(NA_real_)
+      sum(row[ok] * n_vec[ok]) / sum(n_vec[ok])
+    })
 
     missing_aggregate <- round(miss_tab, 2)
 
-    vars_to_remove <- rownames(miss_tab)[miss_tab$global > threshold]
+    vars_to_remove <- rownames(miss_tab)[!is.na(miss_tab$global) & miss_tab$global >= threshold]
 
     message("\n Missingness Table (%)")
     tbl_txt <- capture.output(round(miss_tab, 2))
     message(paste(tbl_txt, collapse = "\n"))
-    message("\n Variables flagged (Global Missing > ", threshold, "%)")
+    message("\n Variables flagged (Global Missing >= ", threshold, "%)")
 
     if (length(vars_to_remove) == 0) {
       message("None")
@@ -284,11 +229,11 @@ if (length(n_vec) == 1) {# Only one server
     names(missing_server) <- colnames(miss_tab)
 
     vars_to_remove_list <- lapply(colnames(miss_tab), function(srv) {
-      rownames(miss_tab)[miss_tab[[srv]] > threshold]
+      rownames(miss_tab)[!is.na(miss_tab[[srv]]) & miss_tab[[srv]] >= threshold]
     })
     names(vars_to_remove_list) <- colnames(miss_tab)
 
-    message("\n Variables flagged per Server (Missing > ", threshold, "%)")
+    message("\n Variables flagged per Server (Missing >= ", threshold, "%)")
     for (srv in names(vars_to_remove_list)) {
       message("\n ", srv, ":")
       vars_srv <- vars_to_remove_list[[srv]]
@@ -340,8 +285,7 @@ if (length(n_vec) == 1) {# Only one server
         message("  ", srv, ": removed ", step_result$n_removed, " of ",
                 step_result$n_before, " rows (missing on flagged variable(s))")
       } else {
-        message("  ", srv, ": removed columns -- ",
-                paste(step_result$columns_removed, collapse = ", "))
+        message("  ", srv, ": removed columns -- ", paste(step_result$columns_removed, collapse = ", "))
       }
     }
 

@@ -25,6 +25,10 @@
 #'   \code{NULL} to skip.
 #' @param num_bins Number of histogram bins per numeric column. Default 20.
 #' @param nfilter Disclosure/stability floor.
+#' @param max_categories_shown Distinct-value threshold above which a
+#'   categorical column's full label:count breakdown is replaced with
+#'   extremes only (no labels) -- see \code{cdh_categorical_summary} in the
+#'   server package. Default 20.
 #' @param datasources A list of \code{\link[DSI]{DSConnection-class}} objects.
 #'
 #' @return A list:
@@ -33,18 +37,21 @@
 #'     \item \code{stats}: raw per-server \code{exploratory_analysisDS} output.
 #'     \item \code{report}: list with \code{numeric_summary} (per-site
 #'       data.frame), \code{categorical_summary} (named list of per-site
-#'       data.frames, one per variable), and \code{correlation} (named list
-#'       of per-site correlation-matrix data.frames, one per server).
+#'       data.frames, one per bounded-set variable), \code{categorical_extremes}
+#'       (data.frame, one row per server/high-cardinality-variable: \code{n_distinct},
+#'       \code{max_count}, \code{min_count}, no category labels), and
+#'       \code{correlation} (named list of per-site correlation-matrix data.frames).
 #'     \item \code{figures}: named list of ggplot objects (histograms --
 #'       one per numeric column per server --, a categorical-frequency bar
-#'       chart per variable, a correlation heatmap per server, and a
-#'       group-trend line chart if \code{group_col} was usable), or
+#'       chart per bounded-set variable, a correlation heatmap per server,
+#'       and a group-trend line chart if \code{group_col} was usable), or
 #'       \code{NULL} if ggplot2 isn't installed.
 #'   }
 #' @export
 ds.harmonization_explore <- function(df = "Draw_cleaned",
                                       numeric_cols = NULL, categorical_cols = NULL,
                                       group_col = "Visit", num_bins = 20, nfilter = 5,
+                                      max_categories_shown = 20,
                                       datasources = NULL) {
 
   if (is.null(datasources)) datasources <- datashield.connections_find()
@@ -53,7 +60,7 @@ ds.harmonization_explore <- function(df = "Draw_cleaned",
   stats_result <- DSI::datashield.aggregate(
     conns = datasources,
     expr = call("exploratory_analysisDS", as.symbol(df), numeric_cols, categorical_cols,
-                group_col, num_bins, nfilter)
+                group_col, num_bins, nfilter, max_categories_shown)
   )
   server_names <- names(stats_result)
 
@@ -69,17 +76,36 @@ ds.harmonization_explore <- function(df = "Draw_cleaned",
     }))
   }))
 
-  # ---- categorical summary tables (one per variable) -----------------------
+  # ---- categorical: split bounded-set ("full") vs high-cardinality
+  # ("extremes") columns, per cdh_categorical_summary's server-side shape ---
   all_cat_vars <- unique(unlist(lapply(stats_result, function(r) names(r$categorical_summary))))
-  categorical_summary <- lapply(all_cat_vars, function(vn) {
+  full_vars <- character(0)
+
+  categorical_extremes <- do.call(rbind, lapply(all_cat_vars, function(vn) {
     do.call(rbind, lapply(server_names, function(srv) {
       cs <- stats_result[[srv]]$categorical_summary[[vn]]
-      if (is.null(cs) || length(cs) == 0) return(NULL)
-      data.frame(server = srv, category = names(cs), count = as.numeric(unlist(cs)),
+      if (is.null(cs)) return(NULL)
+      if (identical(cs$type, "extremes")) {
+        data.frame(server = srv, variable = vn, n_distinct = cs$n_distinct,
+                   max_count = cs$max_count, min_count = cs$min_count,
+                   stringsAsFactors = FALSE)
+      } else {
+        full_vars[[length(full_vars) + 1]] <<- vn
+        NULL
+      }
+    }))
+  }))
+
+  full_vars <- unique(full_vars)
+  categorical_summary <- lapply(full_vars, function(vn) {
+    do.call(rbind, lapply(server_names, function(srv) {
+      cs <- stats_result[[srv]]$categorical_summary[[vn]]
+      if (is.null(cs) || !identical(cs$type, "full") || length(cs$counts) == 0) return(NULL)
+      data.frame(server = srv, category = names(cs$counts), count = as.numeric(unlist(cs$counts)),
                  stringsAsFactors = FALSE)
     }))
   })
-  names(categorical_summary) <- all_cat_vars
+  names(categorical_summary) <- full_vars
 
   # ---- correlation tables (one per server) ---------------------------------
   correlation <- lapply(server_names, function(srv) {
@@ -94,6 +120,7 @@ ds.harmonization_explore <- function(df = "Draw_cleaned",
 
   report <- list(numeric_summary = numeric_summary_table,
                   categorical_summary = categorical_summary,
+                  categorical_extremes = categorical_extremes,
                   correlation = correlation)
 
   # ---- figures --------------------------------------------------------------
@@ -173,7 +200,11 @@ ds.harmonization_explore <- function(df = "Draw_cleaned",
   }
 
   message("Exploratory analysis complete: ", length(unique(numeric_summary_table$variable)),
-          " numeric variable(s), ", length(categorical_summary), " categorical variable(s).")
+          " numeric variable(s), ", length(categorical_summary), " bounded-set categorical variable(s).")
+  if (!is.null(categorical_extremes) && nrow(categorical_extremes) > 0) {
+    message("High-cardinality categorical column(s) reported as extremes only (no labels): ",
+            paste(unique(categorical_extremes$variable), collapse = ", "))
+  }
 
   list(object = df, stats = stats_result, report = report, figures = figures)
 }

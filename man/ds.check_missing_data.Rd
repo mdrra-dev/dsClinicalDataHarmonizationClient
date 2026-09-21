@@ -98,9 +98,8 @@ relevant to the chosen \code{type} is populated; the other is \code{NULL}:
   row names and a single column containing that server's missingness percentages.
 }
 
-Server-side functions called: \code{check_missing_dataDS},
-\code{remove_columnsDS}, \code{drop_rows_missingDS} -- all called via
-\code{datashield.aggregate}; server-side objects are created via each
-function's internal disclosure-safe \code{assign(..., envir =
-parent.frame())}, never via \code{datashield.assign.expr}.
+Server-side functions called: \code{check_missing_dataDS} (aggregate),
+\code{remove_columnsDS}/\code{drop_rows_missingDS} -- both called via
+\code{datashield.aggregate}, creating the new object server-side via
+\code{base::assign(newobj, ..., envir=parent.frame())} as a side effect.
 }

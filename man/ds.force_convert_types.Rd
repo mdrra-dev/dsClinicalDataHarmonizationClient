@@ -9,33 +9,10 @@ ds.force_convert_types(
   numeric_cols = NULL,
   categorical_cols = NULL,
   newobj = NULL,
+  check_zero_anomalies = TRUE,
   datasources = NULL
 )
 }
-\arguments{
-\item{df}{Character string naming the server-side data frame.}
-
-\item{numeric_cols}{Character vector of columns to force to numeric.}
-
-\item{categorical_cols}{Character vector of columns to force to factor.}
-
-\item{newobj}{Name of the new server-side object. Defaults to
-\code{paste0(df, "_typed")}.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
-}
-\value{
-Invisibly returns \code{newobj}.
-}
 \description{
-Actually performs the conversion identified by
-  \code{ds.check_type_conversion()}. This is an explicit, opt-in step --
-  the harmonization pipeline never silently coerces types on its own.
-  Calls the disclosure-safe server function \code{force_convert_typesDS}
-  via \code{datashield.aggregate} -- the converted data frame is created
-  server-side as a side effect; only column names and non-disclosive
-  zero-anomaly diagnostics for the newly-converted numeric columns come
-  back (see \code{detect_zero_anomaliesDS}).
-
-Server function called: \code{force_convert_typesDS}
+Force type conversion on a server-side data frame
 }

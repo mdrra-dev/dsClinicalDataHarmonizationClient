@@ -13,37 +13,6 @@ ds.fill_missing_data(
   datasources = NULL
 )
 }
-\arguments{
-\item{df}{A character string specifying the name of the server-side data frame
-containing at least the patient identifier column, the visit time column,
-and the variable to be forward-filled.}
-
-\item{pat_id_col}{A character string specifying the name of the patient
-identifier column.}
-
-\item{visit_col}{A character string specifying the name of the visit time
-column.}
-
-\item{value_col}{A character string specifying the name of the column
-whose missing values should be forward-filled.}
-
-\item{filled_newobj}{A character string specifying the name of the new
-server-side object that will store the modified data frame. If not provided,
-the default name is \code{paste0(df, "_filled")}.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects obtained
-after login. If not specified, the default set of connections is used:
-see \code{\link[DSI]{datashield.connections_default}}.}
-}
-\value{
-Invisibly returns the name of the newly created server-side object.
-}
 \description{
-Fills missing values in a specified column within each
-  patient, ordered by visit time from diagnosis, via the disclosure-safe
-  server function \code{fill_missing_dataDS}, called through
-  \code{datashield.aggregate} -- the modified data frame is created
-  server-side as a side effect; only row/fill counts come back.
-
-Server function called: \code{fill_missing_dataDS}
+Fill missing visit data on a server-side data frame
 }

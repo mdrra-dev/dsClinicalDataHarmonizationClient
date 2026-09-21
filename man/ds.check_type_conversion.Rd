@@ -2,7 +2,7 @@
 % Please edit documentation in R/ds_force_convert_types.r
 \name{ds.check_type_conversion}
 \alias{ds.check_type_conversion}
-\title{Check whether columns would change type if conversion were forced}
+\title{Check whether columns would change type if conversion were forced (dry run)}
 \usage{
 ds.check_type_conversion(
   df,
@@ -11,25 +11,6 @@ ds.check_type_conversion(
   datasources = NULL
 )
 }
-\arguments{
-\item{df}{Character string naming the server-side data frame.}
-
-\item{numeric_cols}{Character vector of columns expected to be numeric.}
-
-\item{categorical_cols}{Character vector of columns expected to be a factor.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
-}
-\value{
-Invisible list of per-server results.
-}
 \description{
-Dry-run report using \code{detect_type_mismatchesDS} -- use
-  this after \code{ds.check_types()} flags a column, to see whether it's a
-  simple representation issue (e.g. numeric stored as character) that
-  \code{ds.force_convert_types()} could resolve, before actually forcing it.
-  Never creates a server-side object; already a plain, disclosure-safe
-  aggregate call.
-
-Server function called: \code{detect_type_mismatchesDS}
+Check whether columns would change type if conversion were forced (dry run)
 }

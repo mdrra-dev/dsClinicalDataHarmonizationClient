@@ -4,13 +4,20 @@
 \alias{ds.harmonization_report}
 \title{Non-disclosive harmonization report (tables + figures)}
 \usage{
-ds.harmonization_report(df, nfilter = 5, datasources = NULL)
+ds.harmonization_report(
+  df,
+  nfilter = 5,
+  max_categories_shown = 20,
+  datasources = NULL
+)
 }
 \arguments{
 \item{df}{Character string naming the server-side data frame to summarize.}
 
-\item{nfilter}{Minimum count required before a statistic/cell is released
-(passed straight through to \code{harmonization_summaryDS}).}
+\item{nfilter}{Minimum count required before a statistic/cell is released.}
+
+\item{max_categories_shown}{Distinct-value threshold above which a
+categorical column gets extremes-only reporting. Default 20.}
 
 \item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
 }
@@ -20,8 +27,11 @@ A list:
     \item \code{missingness_table}: data.frame, variable x server \% missing.
     \item \code{numeric_summary_table}: data.frame, one row per
       (server, variable) numeric summary.
-    \item \code{categorical_summary}: named list (per variable) of
-      data.frames, one row per (server, category, count).
+    \item \code{categorical_summary}: named list (per bounded-set variable)
+      of data.frames, one row per (server, category, count).
+    \item \code{categorical_extremes}: data.frame, one row per
+      (server, variable) for high-cardinality columns: \code{n_distinct},
+      \code{max_count}, \code{min_count} -- no category labels.
     \item \code{figures}: named list of ggplot objects (see above), or
       \code{NULL} if \code{ggplot2} is not available.
   }
@@ -36,6 +46,15 @@ One-call orchestrator that pulls only aggregate,
   count, percentage, or summary statistic that already passed the
   server-side \code{nfilter} floor.
 
+  Categorical columns are split into two groups server-side (see
+  \code{cdh_categorical_summary}): columns with a small, bounded set of
+  values (e.g. \code{Sex}) get a full, nfilter-suppressed label:count
+  breakdown; columns with more distinct values than
+  \code{max_categories_shown} (default 20 -- e.g. free-text fields like
+  \code{Comorbidities}, where a full breakdown would be equivalent to
+  row-level data) get ONLY the largest/smallest surviving counts, with NO
+  category label attached to either number.
+
   Figures produced (as a named list of ggplot objects, only if
   \code{ggplot2} is installed -- if not, only the tables are returned):
   \itemize{
@@ -43,9 +62,10 @@ One-call orchestrator that pulls only aggregate,
       faceted by server.
     \item \code{numeric_summary_plot}: point-range plot (median, IQR) per
       numeric variable, faceted by server.
-    \item \code{categorical_counts_plot}: one bar chart per categorical
-      variable (list element), faceted by server, cells below the site's
-      \code{nfilter} shown as blank/NA.
+    \item \code{categorical_counts_plot}: one bar chart per bounded-set
+      categorical variable, faceted by server. High-cardinality columns
+      are NOT plotted here (no per-category data exists for them) --
+      see \code{categorical_extremes} in the report instead.
   }
 
 Server function called: \code{harmonization_summaryDS}

@@ -5,7 +5,7 @@
 #'   taken. Resolves the variable dictionary (fetched from the first server
 #'   if not supplied) and calls \code{harmonization_diagnosisDS} via
 #'   \code{datashield.aggregate}.
-#' @keywords internal
+#' @export
 .cdh_run_diagnosis <- function(obj_name, required_vars, optional_vars,
                                 pat_id_col, visit_col, nfilter,
                                 zero_prop_threshold, spike_ratio_threshold,
@@ -18,14 +18,35 @@
     if (is.null(optional_vars)) optional_vars <- dict$optional
   }
 
+  print(".cdh_run_diagnosis:  required_vars")
+  print(paste(required_vars, collapse = "$"))
+  
+  print(".cdh_run_diagnosis:  optional_vars")
+  print(paste(optional_vars, collapse = "$"))
+
+  # diag <- DSI::datashield.aggregate(
+  #   conns = datasources,
+  #   expr = call("harmonization_diagnosisDS", as.symbol(obj_name),
+  #               paste(required_vars, collapse = "$"),
+  #               paste(optional_vars, collapse = "$"),
+  #               pat_id_col, visit_col, nfilter,
+  #               zero_prop_threshold, spike_ratio_threshold)
+  #)
+
   diag <- DSI::datashield.aggregate(
-    conns = datasources,
-    expr = call("harmonization_diagnosisDS", as.symbol(obj_name),
-                paste(required_vars, collapse = "$"),
-                paste(optional_vars, collapse = "$"),
-                pat_id_col, visit_col, nfilter,
-                zero_prop_threshold, spike_ratio_threshold)
+  conns = datasources,
+  expr = call(
+    "harmonization_diagnosisDS",
+    df = as.symbol(obj_name),
+    required_vars = paste(required_vars, collapse = "$"),
+    optional_vars = paste(optional_vars, collapse = "$"),
+    pat_id_col = pat_id_col,
+    visit_col = visit_col,
+    nfilter = nfilter,
+    zero_prop_threshold = zero_prop_threshold,
+    spike_ratio_threshold = spike_ratio_threshold
   )
+)
   attr(diag, "required_vars") <- required_vars
   attr(diag, "optional_vars") <- optional_vars
   diag
@@ -35,7 +56,7 @@
 #' @description Internal helper used by \code{ds.harmonization_diagnose()}
 #'   (standalone) and \code{ds.harmonization_clean()} (post-cleaning
 #'   snapshot, when a before/after comparison isn't being assembled).
-#' @keywords internal
+#' @export
 .cdh_single_report <- function(diag) {
   server_names <- names(diag)
 
@@ -61,6 +82,7 @@
                n_invalid_numeric = length(d$invalid_numeric),
                n_invalid_categorical = length(d$invalid_categorical),
                n_missing_required_vars = length(d$missing_required),
+               missing_required_vars = paste(d$missing_required, collapse = ", "),
                na_string_present = d$na_string_present,
                stringsAsFactors = FALSE)
   }))
@@ -68,6 +90,9 @@
     n_invalid_numeric = sum(conformity_site$n_invalid_numeric),
     n_invalid_categorical = sum(conformity_site$n_invalid_categorical),
     n_missing_required_vars = sum(conformity_site$n_missing_required_vars),
+    missing_required_vars = paste(sort(unique(unlist(strsplit(
+      conformity_site$missing_required_vars[nzchar(conformity_site$missing_required_vars)], ", ")))),
+      collapse = ", "),
     any_na_string_present = any(conformity_site$na_string_present),
     stringsAsFactors = FALSE
   )
@@ -131,7 +156,7 @@
 #' @title Build a before/after diagnosis report
 #' @description Internal helper used by \code{ds.harmonization_orchestrator()}
 #'   in \code{mode = "diagnoseclean"}.
-#' @keywords internal
+#' @export
 .cdh_before_after_report <- function(before, after) {
   server_names <- names(before)
   n_by_site <- vapply(before, `[[`, numeric(1), "n")
@@ -169,6 +194,7 @@
                  n_invalid_numeric = length(d$invalid_numeric),
                  n_invalid_categorical = length(d$invalid_categorical),
                  n_missing_required_vars = length(d$missing_required),
+                 missing_required_vars = paste(d$missing_required, collapse = ", "),
                  na_string_present = d$na_string_present,
                  stringsAsFactors = FALSE)
     }))
@@ -180,6 +206,9 @@
                n_invalid_numeric = sum(sub$n_invalid_numeric),
                n_invalid_categorical = sum(sub$n_invalid_categorical),
                n_missing_required_vars = sum(sub$n_missing_required_vars),
+               missing_required_vars = paste(sort(unique(unlist(strsplit(
+                 sub$missing_required_vars[nzchar(sub$missing_required_vars)], ", ")))),
+                 collapse = ", "),
                any_na_string_present = any(sub$na_string_present),
                stringsAsFactors = FALSE)
   }))

@@ -10,4 +10,3 @@
 Internal helper used by \code{ds.harmonization_orchestrator()}
   in \code{mode = "diagnoseclean"}.
 }
-\keyword{internal}

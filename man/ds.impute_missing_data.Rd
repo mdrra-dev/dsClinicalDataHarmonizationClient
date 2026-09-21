@@ -16,38 +16,6 @@ ds.impute_missing_data(
   datasources = NULL
 )
 }
-\arguments{
-\item{df}{Character string naming the server-side data frame.}
-
-\item{pat_id_col}{Name of the patient identifier column. Default \code{"pat_ID"}.}
-
-\item{visit_col}{Name of the visit-ordering column. Default \code{"Visit"}.}
-
-\item{exclude_cols}{Character vector of columns to exclude from the MICE
-predictor matrix.}
-
-\item{m}{Number of imputations per patient. Default 5.}
-
-\item{maxit}{Maximum MICE iterations per chain. Default 30.}
-
-\item{nfilter}{Minimum site row count required to proceed at all. Default 5.}
-
-\item{imputed_newobj}{Name of the new server-side object. Defaults to
-\code{paste0(df, "_imputed")}.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
-}
-\value{
-Invisibly returns \code{imputed_newobj}.
-}
 \description{
-Client wrapper for the disclosure-safe server function
-  \code{longitudinal_imputationDS}, the preferred imputation strategy for
-  this harmonization module: patient-grouped, visit-ordered, predictive
-  mean matching. Called through \code{datashield.aggregate} -- the imputed
-  data frame is created server-side as a side effect; only row/patient
-  counts (never data) come back. Prefer this over
-  \code{ds.global_imputation()} whenever the data are longitudinal.
-
-Server function called: \code{longitudinal_imputationDS}
+Longitudinal (patient-grouped) MICE imputation -- preferred method
 }

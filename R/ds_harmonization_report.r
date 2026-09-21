@@ -8,6 +8,15 @@
 #'   count, percentage, or summary statistic that already passed the
 #'   server-side \code{nfilter} floor.
 #'
+#'   Categorical columns are split into two groups server-side (see
+#'   \code{cdh_categorical_summary}): columns with a small, bounded set of
+#'   values (e.g. \code{Sex}) get a full, nfilter-suppressed label:count
+#'   breakdown; columns with more distinct values than
+#'   \code{max_categories_shown} (default 20 -- e.g. free-text fields like
+#'   \code{Comorbidities}, where a full breakdown would be equivalent to
+#'   row-level data) get ONLY the largest/smallest surviving counts, with NO
+#'   category label attached to either number.
+#'
 #'   Figures produced (as a named list of ggplot objects, only if
 #'   \code{ggplot2} is installed -- if not, only the tables are returned):
 #'   \itemize{
@@ -15,16 +24,18 @@
 #'       faceted by server.
 #'     \item \code{numeric_summary_plot}: point-range plot (median, IQR) per
 #'       numeric variable, faceted by server.
-#'     \item \code{categorical_counts_plot}: one bar chart per categorical
-#'       variable (list element), faceted by server, cells below the site's
-#'       \code{nfilter} shown as blank/NA.
+#'     \item \code{categorical_counts_plot}: one bar chart per bounded-set
+#'       categorical variable, faceted by server. High-cardinality columns
+#'       are NOT plotted here (no per-category data exists for them) --
+#'       see \code{categorical_extremes} in the report instead.
 #'   }
 #'
 #' Server function called: \code{harmonization_summaryDS}
 #'
 #' @param df Character string naming the server-side data frame to summarize.
-#' @param nfilter Minimum count required before a statistic/cell is released
-#'   (passed straight through to \code{harmonization_summaryDS}).
+#' @param nfilter Minimum count required before a statistic/cell is released.
+#' @param max_categories_shown Distinct-value threshold above which a
+#'   categorical column gets extremes-only reporting. Default 20.
 #' @param datasources A list of \code{\link[DSI]{DSConnection-class}} objects.
 #'
 #' @return A list:
@@ -32,19 +43,23 @@
 #'     \item \code{missingness_table}: data.frame, variable x server \% missing.
 #'     \item \code{numeric_summary_table}: data.frame, one row per
 #'       (server, variable) numeric summary.
-#'     \item \code{categorical_summary}: named list (per variable) of
-#'       data.frames, one row per (server, category, count).
+#'     \item \code{categorical_summary}: named list (per bounded-set variable)
+#'       of data.frames, one row per (server, category, count).
+#'     \item \code{categorical_extremes}: data.frame, one row per
+#'       (server, variable) for high-cardinality columns: \code{n_distinct},
+#'       \code{max_count}, \code{min_count} -- no category labels.
 #'     \item \code{figures}: named list of ggplot objects (see above), or
 #'       \code{NULL} if \code{ggplot2} is not available.
 #'   }
 #' @export
-ds.harmonization_report <- function(df, nfilter = 5, datasources = NULL) {
+ds.harmonization_report <- function(df, nfilter = 5, max_categories_shown = 20,
+                                     datasources = NULL) {
 
   if (is.null(datasources)) datasources <- datashield.connections_find()
 
   results <- DSI::datashield.aggregate(
     conns = datasources,
-    expr  = call("harmonization_summaryDS", as.symbol(df), nfilter)
+    expr  = call("harmonization_summaryDS", as.symbol(df), nfilter, max_categories_shown)
   )
 
   server_names <- names(results)
@@ -68,17 +83,37 @@ ds.harmonization_report <- function(df, nfilter = 5, datasources = NULL) {
     }))
   }))
 
-  # ---- categorical summary tables (one per variable) ---------------------
+  # ---- categorical: split bounded-set ("full") vs high-cardinality
+  # ("extremes") columns, per cdh_categorical_summary's server-side shape ---
   all_cat_vars <- unique(unlist(lapply(results, function(r) names(r$categorical_summary))))
-  categorical_summary <- lapply(all_cat_vars, function(vn) {
+  full_vars <- character(0)
+
+  categorical_summary <- list()
+  categorical_extremes <- do.call(rbind, lapply(all_cat_vars, function(vn) {
     do.call(rbind, lapply(server_names, function(srv) {
       cs <- results[[srv]]$categorical_summary[[vn]]
-      if (is.null(cs) || length(cs) == 0) return(NULL)
-      data.frame(server = srv, category = names(cs),
-                 count = as.numeric(unlist(cs)), stringsAsFactors = FALSE)
+      if (is.null(cs)) return(NULL)
+      if (identical(cs$type, "extremes")) {
+        data.frame(server = srv, variable = vn, n_distinct = cs$n_distinct,
+                   max_count = cs$max_count, min_count = cs$min_count,
+                   stringsAsFactors = FALSE)
+      } else {
+        full_vars[[length(full_vars) + 1]] <<- vn
+        NULL
+      }
+    }))
+  }))
+
+  full_vars <- unique(full_vars)
+  categorical_summary <- lapply(full_vars, function(vn) {
+    do.call(rbind, lapply(server_names, function(srv) {
+      cs <- results[[srv]]$categorical_summary[[vn]]
+      if (is.null(cs) || !identical(cs$type, "full") || length(cs$counts) == 0) return(NULL)
+      data.frame(server = srv, category = names(cs$counts),
+                 count = as.numeric(unlist(cs$counts)), stringsAsFactors = FALSE)
     }))
   })
-  names(categorical_summary) <- all_cat_vars
+  names(categorical_summary) <- full_vars
 
   # ---- figures (only if ggplot2 is available) ----------------------------
   figures <- NULL
@@ -123,10 +158,16 @@ ds.harmonization_report <- function(df, nfilter = 5, datasources = NULL) {
     message("ggplot2 not installed -- returning tables only, no figures.")
   }
 
+  if (!is.null(categorical_extremes) && nrow(categorical_extremes) > 0) {
+    message("High-cardinality categorical column(s) reported as extremes only (no labels): ",
+            paste(unique(categorical_extremes$variable), collapse = ", "))
+  }
+
   list(
     missingness_table = missingness_table,
     numeric_summary_table = numeric_summary_table,
     categorical_summary = categorical_summary,
+    categorical_extremes = categorical_extremes,
     figures = figures
   )
 }

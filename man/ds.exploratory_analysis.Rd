@@ -11,6 +11,7 @@ ds.exploratory_analysis(
   group_col = NULL,
   num_bins = 20,
   nfilter = 5,
+  max_categories_shown = 20,
   datasources = NULL
 )
 }
@@ -27,6 +28,9 @@ visit number, for a longitudinal trend).}
 \item{num_bins}{Number of histogram bins per numeric column. Default 20.}
 
 \item{nfilter}{Disclosure/stability floor.}
+
+\item{max_categories_shown}{Distinct-value threshold above which a
+categorical column gets extremes-only reporting (no labels). Default 20.}
 
 \item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects.}
 }

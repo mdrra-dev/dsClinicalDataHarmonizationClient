@@ -6,29 +6,6 @@
 \usage{
 ds.cast_to_factor(df, columns, modified_obj = NULL, datasources = NULL)
 }
-\arguments{
-\item{df}{A character string specifying the name of the server-side data frame
-containing the columns to be converted.}
-
-\item{columns}{A character vector specifying the names of the columns to convert
-to factor.}
-
-\item{modified_obj}{A character string specifying the name of the new server-side
-object to store the modified data frame. If NULL, a name is generated automatically
-by appending \code{"_modified"} to \code{df}.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects obtained
-after login. If the \code{datasources} argument is not specified the default set of
-connections will be used: see \code{\link[DSI]{datashield.connections_default}}.}
-}
-\value{
-Invisibly returns the name of the newly created server-side object.
-}
 \description{
-Convert one or more columns of a server-side data frame to
-  factor, via the disclosure-safe server function \code{cast_to_factorDS},
-  called through \code{datashield.aggregate} -- the modified data frame is
-  created server-side as a side effect; only column names come back.
-
-Server function called: \code{cast_to_factorDS}
+Cast specified columns to factor on a server-side data frame
 }

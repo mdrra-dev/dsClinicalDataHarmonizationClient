@@ -11,4 +11,3 @@ Internal helper used by \code{ds.harmonization_diagnose()}
   (standalone) and \code{ds.harmonization_clean()} (post-cleaning
   snapshot, when a before/after comparison isn't being assembled).
 }
-\keyword{internal}

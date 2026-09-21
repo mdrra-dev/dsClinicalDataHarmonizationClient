@@ -6,27 +6,9 @@
 \usage{
 ds.cast_NA(df, modified_obj = NULL, datasources = NULL)
 }
-\arguments{
-\item{df}{A character string specifying the name of the server-side data frame.}
-
-\item{modified_obj}{A character string specifying the name of the new server-side
-object to store the modified data frame. If NULL, a name is generated automatically
-by appending \code{"_cast_NA"} to \code{df}.}
-
-\item{datasources}{A list of \code{\link[DSI]{DSConnection-class}} objects obtained
-after login. If the \code{datasources} argument is not specified the default set of
-connections will be used: see \code{\link[DSI]{datashield.connections_default}}.}
-}
-\value{
-Invisibly returns the name of the newly created server-side object.
-}
 \description{
-Converts "NA" strings into proper NA values across a
-  server-side data frame, and reports whether any replacements occurred.
-  Calls the disclosure-safe server function \code{cast_NADS} via
-  \code{datashield.aggregate} -- the transformed data frame is created
-  server-side as a side effect (never returned to the client); only the
-  \code{changed} flag comes back.
-
-Server function called: \code{cast_NADS}
+Converts "NA" strings into proper NA values. Calls
+  \code{cast_NADS} via \code{datashield.aggregate}; the object is created
+  server-side via \code{base::assign(newobj, ..., envir=parent.frame())}
+  as a side effect, disclosure-safe since only the small summary comes back.
 }
