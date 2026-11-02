@@ -59,6 +59,7 @@ ds.harmonization_clean <- function(df,
                                     compute_derived = TRUE,
                                     force_numeric_cols = NULL, force_categorical_cols = NULL,
                                     imputation_method = c("longitudinal", "global", "none"),
+                                     exclude_cols = NULL,
                                     post_imputation_drop = FALSE,
                                     pat_id_col = "pat_ID",
                                     visit_col = "Visit_months_from_diagnosis",
@@ -119,7 +120,7 @@ ds.harmonization_clean <- function(df,
   if (imputation_method == "longitudinal") {
     message("Step 6/7: longitudinal (patient-grouped PMM) imputation...")
     current <- ds.impute_missing_data(current, pat_id_col = pat_id_col, visit_col = visit_col,
-                                       datasources = datasources)
+                                       exclude_cols =  exclude_cols , datasources = datasources)
   } else if (imputation_method == "global") {
     message("Step 6/7: global (pooled) MICE imputation...")
     current <- ds.global_imputation(current, id_col = pat_id_col, datasources = datasources)
