@@ -9,7 +9,7 @@ ds.impute_missing_data <- function(df, pat_id_col = "pat_ID", visit_col = "Visit
   message("Running longitudinal (patient-grouped, PMM) imputation on each server...")
   results <- DSI::datashield.aggregate(conns = datasources,
     expr = call("longitudinal_imputationDS", as.symbol(df), pat_id_col, visit_col,
-                exclude_cols, m, maxit, nfilter, imputed_newobj))
+                paste(exclude_cols, collapse = "$"), m, maxit, nfilter, imputed_newobj))
 
   for (s in names(results)) {
     r <- results[[s]]
